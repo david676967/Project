@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Daily "To Remember" — Single File App</title>
+
+  <style>
+    /* ---------- Theme variables (light by default) ---------- */
+    :root{
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #0f1724;
+      --muted: #556170;
+      --accent: #2563eb;
+      --success: #16a34a;
+      --danger: #ef4444;
+      --glass: rgba(255,255,255,0.6);
+      --shadow: 0 6px 18px rgba(16,24,40,0.06);
+      --radius: 12px;
+    }
+
+    /* Dark theme overrides */
+    body.dark{
+      --bg: #071029;
+      --card: #0b1220;
+      --text: #e6eef8;
+      --muted: #9fb3d6;
+      --accent: #60a5fa;
+      --success: #4ade80;
+      --danger: #fb7185;
+      --glass: rgba(10,18,30,0.6);
+      --shadow: 0 6px 18px rgba(2,6,23,0.6);
+    }
+
+    /* ---------- Global layout ---------- */
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg, var(--bg), rgba(0,0,0,0)) fixed;
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:20px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+    }
+
+    .app {
+      width:100%;
+      max-width:1100px;
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap:20px;
+      align-items:start;
+    }
+
+    /* Stack on small screens */
+    @media (max-width:880px){
+      .app{grid-template-columns:1fr; padding-bottom:40px}
+    }
+
+    header{
+      grid-column: 1 / -1;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:4px;
+    }
+
+    header h1{
+      margin:0;
+      font-size:1.4rem;
+      letter-spacing:-0.2px;
+    }
+    header .sub{color:var(--muted); font-size:0.9rem}
+
+    /* Card styles */
+    .card{
+      background: linear-gradient(180deg, var(--card), var(--glass));
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:16px;
+      border:1px solid rgba(0,0,0,0.04);
+    }
+
+    /* My List section */
+    .list-controls{
+      display:flex;
+      gap:8px;
+      margin-bottom:12px;
+    }
+    .input{
+      flex:1;
+      display:flex;
+      gap:8px;
+    }
+    .input input{
+      flex:1;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid rgba(0,0,0,0.06);
+      background:transparent;
+      color:var(--text);
+      outline:none;
+      font-size:1rem;
+    }
+    .btn{
+      background:var(--accent);
+      color:white;
+      border:none;
+      padding:10px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:600;
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+    }
+    .btn.ghost{
+      background:transparent;
+      color:var(--text);
+      border:1px solid rgba(0,0,0,0.06);
+    }
+
+    ul.todo{
+      list-style:none;
+      padding:0;
+      margin:0;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    li.item{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:10px;
+      border-radius:10px;
+      background:rgba(0,0,0,0.02);
+    }
+    body.dark li.item{ background:rgba(255,255,255,0.02) }
+    .item .title{
+      flex:1;
+      font-size:1rem;
+      word-break:break-word;
+    }
+    .item.done .title{
+      text-decoration:line-through;
+      color:var(--muted);
+      opacity:0.85;
+    }
+    .icon-btn{
+      background:transparent;
+      border:none;
+      cursor:pointer;
+      font-size:1rem;
+      padding:6px;
+      border-radius:8px;
+    }
+    .icon-btn.del{ color:var(--danger) }
+    .icon-btn.check{ color:var(--success) }
+
+    /* Friends and Leaderboard */
+    .friend{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:10px;
+      border-radius:10px;
+    }
+    .avatar{
+      width:44px; height:44px; border-radius:10px;
+      background:linear-gradient(135deg,var(--accent),#7dd3fc);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      color:white; font-weight:700;
+      font-size:1rem;
+    }
+    .friend .meta{
+      flex:1;
+    }
+    .score{
+      font-weight:700;
+      color:var(--accent);
+    }
+
+    .leaderboard .place{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:10px;
+      border-radius:10px;
+      margin-bottom:8px;
+    }
+    .leaderboard .top{
+      background: linear-gradient(90deg, rgba(255,215,0,0.12), rgba(255,255,255,0));
+      border:1px solid rgba(255,215,0,0.12);
+      box-shadow: 0 6px 18px rgba(255,215,0,0.05);
+    }
+    .leaderboard .rank{
+      min-width:30px;
+      text-align:center;
+      font-weight:800;
+    }
+
+    /* Settings */
+    .settings-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:8px 0;
+    }
+    .toggle{
+      position:relative;
+      width:44px; height:26px;
+      background:rgba(0,0,0,0.06);
+      border-radius:999px;
+      display:inline-block;
+      cursor:pointer;
+    }
+    .toggle .dot{
+      position:absolute;
+      top:3px; left:3px;
+      width:20px; height:20px;
+      background:white;
+      border-radius:50%;
+      transition:all 0.18s ease;
+      box-shadow:0 3px 8px rgba(2,6,23,0.2);
+    }
+    .toggle.on{
+      background:linear-gradient(90deg,var(--accent),#7dd3fc);
+    }
+    .toggle.on .dot{ left:21px; background:white }
+
+    footer.note{ color:var(--muted); font-size:0.85rem; margin-top:10px }
+
+    small.muted{ color:var(--muted); font-size:0.85rem }
+
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>To Remember</h1>
+        <div class="sub">Daily list & friends leaderboard</div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center">
+        <div class="sub">Quick tips: add tasks, mark done, delete</div>
+      </div>
+    </header>
+
+    <!-- My List -->
+    <section class="card" id="my-list">
+      <h2>My List</h2>
+      <div class="list-controls">
+        <div class="input">
+          <input id="new-task" placeholder="Add something to remember today..." />
+          <button class="btn" id="add-btn">➕ Add</button>
+        </div>
+        <button class="btn ghost" id="clear-done">🧹 Clear Done</button>
+      </div>
+
+      <ul class="todo" id="todo-list">
+        <!-- Items populated by JS -->
+      </ul>
+
+      <footer class="note">
+        <small class="muted">Tasks are saved locally in your browser.</small>
+      </footer>
+    </section>
+
+    <!-- Right column: Friends, Leaderboard, Settings -->
+    <aside style="display:flex;flex-direction:column;gap:20px">
+      <!-- Friends -->
+      <section class="card" id="friends-card">
+        <h3>Friends</h3>
+        <div id="friends-list" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- Leaderboard -->
+      <section class="card leaderboard" id="leaderboard-card">
+        <h3>Leaderboard</h3>
+        <div id="leaderboard-list" style="margin-top:8px">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- Settings -->
+      <section class="card" id="settings-card">
+        <h3>Settings</h3>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <div class="settings-row">
+            <div>
+              <div style="font-weight:700">Background Music <span style="margin-left:8px">♫</span></div>
+              <small class="muted">Play a soft background loop</small>
+            </div>
+            <div role="button" id="music-toggle" class="toggle" title="Toggle music">
+              <div class="dot"></div>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div>
+              <div style="font-weight:700">Theme</div>
+              <small class="muted">Switch between Light / Dark</small>
+            </div>
+            <div role="button" id="theme-toggle" class="toggle" title="Toggle theme">
+              <div class="dot"></div>
+            </div>
+          </div>
+
+          <div style="margin-top:6px">
+            <small class="muted">Settings are remembered across visits.</small>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Hidden audio element for background music -->
+    <audio id="bg-audio" loop>
+      <!-- Royalty-free sample -->
+      <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+      Your browser does not support the audio element.
+    </audio>
+  </div>
+
+  <script>
+    /* ===========================
+       Simple Single-file App
+       - Todo list (saved to localStorage)
+       - Friends mock data + Leaderboard
+       - Settings: background music and theme (persisted)
+       =========================== */
+
+    // ---------- Utilities ----------
+    const qs = s => document.querySelector(s);
+    const qsa = s => Array.from(document.querySelectorAll(s));
+
+    // ---------- Local storage keys ----------
+    const LS_TASKS = 'toRemember_tasks_v1';
+    const LS_THEME = 'toRemember_theme_v1'; // 'dark' or 'light'
+    const LS_MUSIC = 'toRemember_music_v1'; // 'on' or 'off'
+
+    // ---------- DOM Elements ----------
+    const todoListEl = qs('#todo-list');
+    const newTaskInput = qs('#new-task');
+    const addBtn = qs('#add-btn');
+    const clearDoneBtn = qs('#clear-done');
+
+    const friendsListEl = qs('#friends-list');
+    const leaderboardEl = qs('#leaderboard-list');
+
+    const themeToggle = qs('#theme-toggle');
+    const musicToggle = qs('#music-toggle');
+    const bgAudio = qs('#bg-audio');
+
+    // ---------- App State ----------
+    let tasks = []; // {id, text, done, created}
+    // Mock friends data — could be fetched from server; using static for demo
+    let friends = [
+      { id:1, name: "Ava", score: 7 },
+      { id:2, name: "Liam", score: 10 },
+      { id:3, name: "Noah", score: 4 },
+      { id:4, name: "Maya", score: 10 },
+      { id:5, name: "Zoe", score: 2 }
+    ];
+
+    // ---------- Initialization ----------
+    function init(){
+      loadTasks();
+      renderList();
+      renderFriends();
+      renderLeaderboard();
+      attachListeners();
+      loadSettings();
+    }
+
+    /* ---------- Task list logic ----------
+       - addItem: create a new task and persist
+       - toggleDone: mark item done/undone
+       - deleteItem: remove from list
+       - tasks persisted to localStorage for convenience
+    */
+    function loadTasks(){
+      try{
+        const raw = localStorage.getItem(LS_TASKS);
+        tasks = raw ? JSON.parse(raw) : [];
+      }catch(e){ tasks = [] }
+    }
+    function saveTasks(){
+      localStorage.setItem(LS_TASKS, JSON.stringify(tasks));
+    }
+
+    function addItem(text){
+      if(!text || !text.trim()) return;
+      const item = {
+        id: Date.now(),
+        text: text.trim(),
+        done: false,
+        created: new Date().toISOString()
+      };
+      tasks.unshift(item);
+      saveTasks();
+      renderList();
+      newTaskInput.value = '';
+      newTaskInput.focus();
+    }
+
+    function toggleDone(id){
+      tasks = tasks.map(t => t.id === id ? {...t, done: !t.done} : t);
+      saveTasks();
+      renderList();
+    }
+
+    function deleteItem(id){
+      tasks = tasks.filter(t => t.id !== id);
+      saveTasks();
+      renderList();
+    }
+
+    function clearDone(){
+      tasks = tasks.filter(t => !t.done);
+      saveTasks();
+      renderList();
+    }
+
+    function renderList(){
+      todoListEl.innerHTML = '';
+      if(tasks.length === 0){
+        todoListEl.innerHTML = '<li class="item" style="justify-content:center;color:var(--muted)">No tasks yet — add something you want to remember today.</li>';
+        return;
+      }
+      tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = 'item' + (task.done ? ' done' : '');
+        // checkbox / mark button
+        const chk = document.createElement('button');
+        chk.className = 'icon-btn check';
+        chk.title = task.done ? 'Mark as not done' : 'Mark as done';
+        chk.innerText = task.done ? '✅' : '☐';
+        chk.addEventListener('click', ()=> toggleDone(task.id));
+
+        // title
+        const title = document.createElement('div');
+        title.className = 'title';
+        title.innerText = task.text;
+
+        // delete
+        const del = document.createElement('button');
+        del.className = 'icon-btn del';
+        del.title = 'Delete';
+        del.innerText = '🗑️';
+        del.addEventListener('click', ()=> {
+          if(confirm('Delete this task?')) deleteItem(task.id);
+        });
+
+        li.appendChild(chk);
+        li.appendChild(title);
+        li.appendChild(del);
+
+        todoListEl.appendChild(li);
+      });
+    }
+
+    // ---------- Friends & Leaderboard ----------
+    // Renders the simple friends list with name + score
+    function renderFriends(){
+      friendsListEl.innerHTML = '';
+      friends.forEach(f => {
+        const wrap = document.createElement('div');
+        wrap.className = 'friend';
+
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.innerText = initials(f.name);
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.innerHTML = '<div style="font-weight:700">'+escapeHtml(f.name)+'</div><div class="muted" style="color:var(--muted)">Tasks today: '+f.score+'</div>';
+
+        const scoreEl = document.createElement('div');
+        scoreEl.className = 'score';
+        scoreEl.innerText = f.score;
+
+        wrap.appendChild(avatar);
+        wrap.appendChild(meta);
+        wrap.appendChild(scoreEl);
+
+        friendsListEl.appendChild(wrap);
+      });
+    }
+
+    // Renders leaderboard sorted by score desc, highlights top friend(s)
+    function renderLeaderboard(){
+      leaderboardEl.innerHTML = '';
+      // Clone and sort (highest first). If tie, keep original order.
+      const sorted = [...friends].sort((a,b)=> b.score - a.score || a.id - b.id);
+      const topScore = sorted.length ? sorted[0].score : null;
+
+      sorted.forEach((f, idx) => {
+        const row = document.createElement('div');
+        row.className = 'place' + (f.score === topScore ? ' top' : '');
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+
+        const rank = document.createElement('div');
+        rank.className = 'rank';
+        rank.innerText = (idx+1) === 1 ? '🏆' : (idx+1);
+
+        const name = document.createElement('div');
+        name.style.flex = '1';
+        name.innerText = f.name;
+
+        const score = document.createElement('div');
+        score.style.fontWeight = '800';
+        score.style.color = f.score === topScore ? 'var(--success)' : 'var(--accent)';
+        score.innerText = f.score;
+
+        row.appendChild(rank);
+        row.appendChild(name);
+        row.appendChild(score);
+
+        leaderboardEl.appendChild(row);
+      });
+    }
+
+    // ---------- Settings: Theme and Music ----------
+    function loadSettings(){
+      // Theme
+      const savedTheme = localStorage.getItem(LS_THEME) || 'light';
+      applyTheme(savedTheme, false);
+
+      // Music
+      const savedMusic = localStorage.getItem(LS_MUSIC) || 'off';
+      applyMusic(savedMusic === 'on', false);
+    }
+
+    function applyTheme(theme, persist = true){
+      if(theme === 'dark'){
+        document.body.classList.add('dark');
+        themeToggle.classList.add('on');
+      }else{
+        document.body.classList.remove('dark');
+        themeToggle.classList.remove('on');
+      }
+      if(persist) localStorage.setItem(LS_THEME, theme);
+    }
+
+    function toggleTheme(){
+      const isDark = document.body.classList.contains('dark');
+      applyTheme(isDark ? 'light' : 'dark', true);
+    }
+
+    function applyMusic(on, persist = true){
+      if(on){
+        musicToggle.classList.add('on');
+        // Try to play. Browsers may block autoplay; only plays after user interaction (toggle clicks) reliably.
+        bgAudio.play().catch(()=>{/* autoplay blocked - user must interact */});
+      }else{
+        musicToggle.classList.remove('on');
+        bgAudio.pause();
+        bgAudio.currentTime = 0;
+      }
+      if(persist) localStorage.setItem(LS_MUSIC, on ? 'on' : 'off');
+    }
+
+    function toggleMusic(){
+      const isOn = musicToggle.classList.contains('on');
+      applyMusic(!isOn, true);
+    }
+
+    // ---------- Helpers ----------
+    function initials(name = ''){
+      return name.split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase();
+    }
+    function escapeHtml(s){
+      return (s+'').replace(/[&<>"']/g, c=>({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      })[c]);
+    }
+
+    // ---------- Event listeners ----------
+    function attachListeners(){
+      addBtn.addEventListener('click', ()=> addItem(newTaskInput.value));
+      newTaskInput.addEventListener('keydown', e => {
+        if(e.key === 'Enter') addItem(newTaskInput.value);
+      });
+      clearDoneBtn.addEventListener('click', ()=> {
+        if(confirm('Clear all completed tasks?')) clearDone();
+      });
+
+      // Theme & Music toggles
+      themeToggle.addEventListener('click', ()=> {
+        toggleTheme();
+      });
+      musicToggle.addEventListener('click', ()=> {
+        toggleMusic();
+      });
+
+      // If audio ends (loop is enabled, but just in case), restart
+      bgAudio.addEventListener('ended', ()=> {
+        bgAudio.currentTime = 0;
+        bgAudio.play().catch(()=>{});
+      });
+
+      // Make clicking the card header of friends/leaderboard re-render (demo)
+      qs('#friends-card').addEventListener('click', ()=> renderFriends());
+      qs('#leaderboard-card').addEventListener('click', ()=> renderLeaderboard());
+    }
+
+    // Initialize app
+    init();
+
+    /* Optional: Expose some functions for debugging in console */
+    window.TOREMEMBER = {
+      addItem, toggleDone, deleteItem, renderList, tasks, friends
+    };
+  </script>
+</body>
+</html>
